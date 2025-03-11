@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.5)
-set(LIBDIVIDE_VERSION "5.1")
+set(LIBDIVIDE_VERSION "5.2.0")
 project(libdivide C CXX)
 
 include(CheckCXXCompilerFlag)
@@ -37,6 +37,7 @@ endif()
 
 option(LIBDIVIDE_BUILD_TESTS   "Build the test programs" "${MAIN_PROJECT}")
 option(LIBDIVIDE_BUILD_FUZZERS "Build the fuzzers (requires clang)" OFF)
+option(LIBDIVIDE_ENABLE_SANITIZERS "Enable sanitizer instrumentation" OFF)
 
 # By default we automatically enable vectors supported by
 # the host CPU. You may also set these explicitly to OFF or ON.
@@ -238,7 +239,9 @@ endif()
 add_library(libdivide INTERFACE)
 add_library(libdivide::libdivide ALIAS libdivide)
 
-include(CMakeSanitize)
+if (LIBDIVIDE_ENABLE_SANITIZERS)
+  include(CMakeSanitize)
+endif()
 
 target_compile_features(libdivide INTERFACE cxx_alias_templates)
 

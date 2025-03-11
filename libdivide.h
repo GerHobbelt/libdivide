@@ -12,9 +12,9 @@
 #define LIBDIVIDE_H
 
 // *** Version numbers are auto generated - do not edit ***
-#define LIBDIVIDE_VERSION "5.1.0"
+#define LIBDIVIDE_VERSION "5.2.0"
 #define LIBDIVIDE_VERSION_MAJOR 5
-#define LIBDIVIDE_VERSION_MINOR 1
+#define LIBDIVIDE_VERSION_MINOR 2
 #define LIBDIVIDE_VERSION_PATCH 0
 
 #include <stdint.h>
@@ -546,7 +546,7 @@ static LIBDIVIDE_INLINE uint64_t libdivide_128_div_64_to_64(
     shift = libdivide_count_leading_zeros64(den);
     den <<= shift;
     numhi <<= shift;
-    numhi |= (numlo >> (-shift & 63)) & (-(int64_t)shift >> 63);
+    numhi |= (numlo >> (-shift & 63)) & (uint64_t)(-(int64_t)shift >> 63);
     numlo <<= shift;
 
     // Extract the low digits of the numerator and both digits of the denominator.
