@@ -1,7 +1,9 @@
 #pragma once
 
 // Silence MSVC sprintf unsafe warnings
+#ifndef _CRT_SECURE_NO_WARNINGS
 #define _CRT_SECURE_NO_WARNINGS
+#endif
 
 #include <inttypes.h>
 #include <stdio.h>
