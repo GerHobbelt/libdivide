@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.5)
+cmake_minimum_required(VERSION 3.5...4.2)
 set(LIBDIVIDE_VERSION "5.3.0")
 project(libdivide C CXX)
 
@@ -46,6 +46,7 @@ set(LIBDIVIDE_AVX2  AUTO CACHE STRING  "Enable AVX2 vector instructions")
 set(LIBDIVIDE_AVX512 AUTO CACHE STRING "Enable AVX512 vector instructions")
 set(LIBDIVIDE_NEON AUTO CACHE STRING "Enable ARM NEON vector instructions")
 set(LIBDIVIDE_SVE  AUTO CACHE STRING  "Enable ARM SVE vector instructions")
+set(LIBDIVIDE_SVE2 AUTO CACHE STRING  "Enable ARM SVE2 vector instructions")
 
 # By default enable release mode ###############################
 
@@ -73,6 +74,16 @@ set(LIBDIVIDE_FLAGS)
 check_cxx_compiler_flag(-fno-lax-vector-conversions WARN_VEC_CONVERSIONS)
 if (WARN_VEC_CONVERSIONS)
     list(APPEND LIBDIVIDE_FLAGS "-fno-lax-vector-conversions")
+endif()
+
+set(LIBDIVIDE_BENCHMARK_DIVLU_FLAGS "${LIBDIVIDE_FLAGS}")
+# benchmark_divlu uses a deliberate non-standard extension in its timing harness.
+# Suppress that warning only for compilers that accept GCC-style warning flags.
+if (NOT CMAKE_C_COMPILER_ID STREQUAL "MSVC" AND NOT CMAKE_C_SIMULATE_ID STREQUAL "MSVC")
+    check_c_compiler_flag("-Wno-pedantic" WNO_PEDANTIC)
+    if (WNO_PEDANTIC)
+        list(APPEND LIBDIVIDE_BENCHMARK_DIVLU_FLAGS "-Wno-pedantic")
+    endif()
 endif()
 
 
@@ -194,6 +205,30 @@ else()
     endif()
 endif()
 
+# SVE2
+if (NOT LIBDIVIDE_SVE2 STREQUAL "AUTO")
+    set(LIBDIVIDE_SVE2_ENABLED "${LIBDIVIDE_SVE2}")
+else()
+    set(SVE2_TEST "
+    #include <arm_sve.h>
+    int main()
+    {
+        svbool_t pg = svptrue_b32();
+        svuint32_t a = svdup_n_u32(0);
+        svuint32_t b = svhadd_u32_x(pg, a, a);
+        return (int)svlastb_u32(pg, b);
+    }")
+    if (CMAKE_CROSSCOMPILING)
+        check_cxx_source_compiles("${SVE2_TEST}" LIBDIVIDE_SVE2_ENABLED)
+    else()
+        check_cxx_source_runs("${SVE2_TEST}" LIBDIVIDE_SVE2_ENABLED)
+    endif()
+endif()
+
+if(LIBDIVIDE_SVE2_ENABLED)
+    set(LIBDIVIDE_SVE_ENABLED TRUE)
+endif()
+
 # AVX512
 if (NOT LIBDIVIDE_AVX512 STREQUAL "AUTO")
     set(LIBDIVIDE_AVX512_ENABLED "${LIBDIVIDE_AVX512}")
@@ -246,6 +281,9 @@ if(LIBDIVIDE_NEON_ENABLED)
 endif()
 if(LIBDIVIDE_SVE_ENABLED)
     list(APPEND LIBDIVIDE_VECTOR_EXT "LIBDIVIDE_SVE")
+endif()
+if(LIBDIVIDE_SVE2_ENABLED)
+    list(APPEND LIBDIVIDE_VECTOR_EXT "LIBDIVIDE_SVE2")
 endif()
 if(LIBDIVIDE_AVX512_ENABLED)
     list(APPEND LIBDIVIDE_VECTOR_EXT "LIBDIVIDE_AVX512")
@@ -322,7 +360,7 @@ if (LIBDIVIDE_BUILD_TESTS)
     target_compile_options(tester PRIVATE "${LIBDIVIDE_FLAGS}" "${NO_VECTORIZE}")
     target_compile_options(test_c99 PRIVATE "${LIBDIVIDE_FLAGS}" "${NO_VECTORIZE}")
     target_compile_options(test_divlu PRIVATE "${LIBDIVIDE_FLAGS}")
-    target_compile_options(benchmark_divlu PRIVATE "${LIBDIVIDE_FLAGS}" "-Wno-pedantic")
+    target_compile_options(benchmark_divlu PRIVATE "${LIBDIVIDE_BENCHMARK_DIVLU_FLAGS}")
     target_compile_options(fast_div_generator PRIVATE "${LIBDIVIDE_FLAGS}" "${NO_VECTORIZE}")
     target_compile_options(benchmark PRIVATE "${LIBDIVIDE_FLAGS}" "${NO_VECTORIZE_C}")
     target_compile_options(benchmark_branchfree PRIVATE "${LIBDIVIDE_FLAGS}" "${NO_VECTORIZE}")
